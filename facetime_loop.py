@@ -16,6 +16,7 @@ ALLOWED_DAYS = None  # e.g. ["Monday","Tuesday","Wednesday","Thursday","Friday"]
 
 # Numbers with priority — higher number = called first. Same priority = original order.
 NUMBERS = {"+919324718705": 1}  # format: {"number": priority}
+NUMBERS_FILE = None  # e.g. "numbers.txt" — one number per line, optional ":priority" suffix
 DELAY = 20          # base seconds between calls
 DELAY_RANDOM = True # if True, randomizes delay between DELAY and DELAY*1.5
 MAX_ATTEMPTS = 10   # set to None for unlimited
@@ -70,6 +71,21 @@ def wait_until(start_time_str):
     wait_secs = (target - now).total_seconds()
     log(f"Waiting until {start_time_str} ({int(wait_secs)}s from now)...")
     time.sleep(wait_secs)
+
+if NUMBERS_FILE:
+    try:
+        with open(NUMBERS_FILE) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split(":")
+                num = parts[0].strip()
+                priority = int(parts[1].strip()) if len(parts) > 1 else 1
+                NUMBERS[num] = priority
+        log(f"Loaded {len(NUMBERS)} number(s) from {NUMBERS_FILE}.")
+    except FileNotFoundError:
+        log(f"Numbers file '{NUMBERS_FILE}' not found. Using hardcoded NUMBERS.")
 
 if ALLOWED_DAYS:
     today = datetime.now().strftime("%A")
