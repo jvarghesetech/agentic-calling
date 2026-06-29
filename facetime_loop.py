@@ -1,6 +1,7 @@
 import subprocess
 import time
 import sys
+import random
 from datetime import datetime
 
 LOG_FILE = "call_log.txt"
@@ -9,7 +10,8 @@ LOG_FILE = "call_log.txt"
 START_TIME = None  # e.g. "14:30" to start at 2:30 PM
 
 NUMBERS = ["+919324718705"]  # add more numbers to the list
-DELAY = 20  # seconds between calls
+DELAY = 20          # base seconds between calls
+DELAY_RANDOM = True # if True, randomizes delay between DELAY and DELAY*1.5
 MAX_ATTEMPTS = 10  # set to None for unlimited
 
 def log(message):
@@ -49,7 +51,8 @@ try:
                 break
             attempt += 1
             subprocess.run(["open", f"facetime://{NUMBER}"])
-            log(f"[{NUMBER}] Call {attempt} initiated. Next call in {DELAY} seconds...")
-            time.sleep(DELAY)
+            wait = random.uniform(DELAY, DELAY * 1.5) if DELAY_RANDOM else DELAY
+            log(f"[{NUMBER}] Call {attempt} initiated. Next call in {int(wait)} seconds...")
+            time.sleep(wait)
 except KeyboardInterrupt:
     log("Session stopped by user.")
