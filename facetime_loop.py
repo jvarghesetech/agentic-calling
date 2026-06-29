@@ -12,7 +12,8 @@ START_TIME = None  # e.g. "14:30" to start at 2:30 PM
 NUMBERS = ["+919324718705"]  # add more numbers to the list
 DELAY = 20          # base seconds between calls
 DELAY_RANDOM = True # if True, randomizes delay between DELAY and DELAY*1.5
-MAX_ATTEMPTS = 10  # set to None for unlimited
+MAX_ATTEMPTS = 10   # set to None for unlimited
+NUMBER_COOLDOWN = 30  # seconds to wait before moving to next number
 
 def log(message):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -42,7 +43,10 @@ if MAX_ATTEMPTS:
     log(f"Will stop after {MAX_ATTEMPTS} attempts per number.")
 
 try:
-    for NUMBER in NUMBERS:
+    for i, NUMBER in enumerate(NUMBERS):
+        if i > 0 and NUMBER_COOLDOWN:
+            log(f"Cooldown: waiting {NUMBER_COOLDOWN}s before next number...")
+            time.sleep(NUMBER_COOLDOWN)
         attempt = 0
         log(f"Starting calls to {NUMBER}")
         while True:
