@@ -9,6 +9,9 @@ LOG_FILE = "call_log.txt"
 # Schedule: set to "HH:MM" (24hr) to delay until that time, or None to start immediately
 START_TIME = None   # e.g. "14:30" to start at 2:30 PM
 STOP_TIME  = None   # e.g. "22:00" to stop at 10:00 PM
+BLACKOUT_START = 22  # hour (24hr) to start blackout, e.g. 22 = 10 PM
+BLACKOUT_END   = 8   # hour (24hr) to end blackout, e.g. 8 = 8 AM
+BLACKOUT_ENABLED = False
 
 NUMBERS = ["+919324718705"]  # add more numbers to the list
 DELAY = 20          # base seconds between calls
@@ -23,6 +26,19 @@ def log(message):
     print(entry)
     with open(LOG_FILE, "a") as f:
         f.write(entry + "\n")
+
+def in_blackout():
+    if not BLACKOUT_ENABLED:
+        return False
+    hour = datetime.now().hour
+    if BLACKOUT_START > BLACKOUT_END:  # spans midnight
+        return hour >= BLACKOUT_START or hour < BLACKOUT_END
+    return BLACKOUT_START <= hour < BLACKOUT_END
+
+def wait_through_blackout():
+    while in_blackout():
+        log(f"Blackout hours ({BLACKOUT_START}:00–{BLACKOUT_END}:00). Waiting 60s...")
+        time.sleep(60)
 
 def past_stop_time():
     if not STOP_TIME:
@@ -75,6 +91,7 @@ try:
             if past_stop_time():
                 log(f"Stop time {STOP_TIME} reached. Stopping.")
                 raise StopIteration
+            wait_through_blackout()
             attempt += 1
             total_calls += 1
             subprocess.run(["open", f"facetime://{NUMBER}"])
