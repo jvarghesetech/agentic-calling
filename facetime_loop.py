@@ -22,6 +22,7 @@ DELAY_RANDOM = True # if True, randomizes delay between DELAY and DELAY*1.5
 MAX_ATTEMPTS = 10   # set to None for unlimited
 NUMBER_COOLDOWN = 30  # seconds to wait before moving to next number
 MAX_DAILY_CALLS = 50  # hard cap on total calls per session, set to None for unlimited
+SKIP_AFTER_FAILURES = 3  # skip a number after this many consecutive unanswered calls; None = never skip
 
 def play_sound():
     subprocess.run(["afplay", "/System/Library/Sounds/Ping.aiff"], capture_output=True)
@@ -116,10 +117,14 @@ try:
             log(f"Cooldown: waiting {NUMBER_COOLDOWN}s before next number...")
             time.sleep(NUMBER_COOLDOWN)
         attempt = 0
+        consecutive_failures = 0
         log(f"Starting calls to {NUMBER} (priority {NUMBERS[NUMBER]})")
         while True:
             if MAX_ATTEMPTS and attempt >= MAX_ATTEMPTS:
                 log(f"Reached {MAX_ATTEMPTS} attempts for {NUMBER}. Moving on.")
+                break
+            if SKIP_AFTER_FAILURES and consecutive_failures >= SKIP_AFTER_FAILURES:
+                log(f"Skipping {NUMBER} after {consecutive_failures} consecutive unanswered calls.")
                 break
             if MAX_DAILY_CALLS and total_calls >= MAX_DAILY_CALLS:
                 log(f"Daily cap of {MAX_DAILY_CALLS} calls reached. Stopping.")
@@ -133,8 +138,9 @@ try:
             play_sound()
             notify("FaceTime Loop", f"Calling {NUMBER} (attempt {attempt})")
             subprocess.run(["open", f"facetime://{NUMBER}"])
+            consecutive_failures += 1  # assume unanswered unless manually reset
             wait = random.uniform(DELAY, DELAY * 1.5) if DELAY_RANDOM else DELAY
-            log(f"[{NUMBER}] Call {attempt} initiated (total: {total_calls}). Next call in {int(wait)}s...")
+            log(f"[{NUMBER}] Call {attempt} initiated (total: {total_calls}, streak: {consecutive_failures}). Next in {int(wait)}s...")
             time.sleep(wait)
 except StopIteration:
     pass
