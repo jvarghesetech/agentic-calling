@@ -2,7 +2,19 @@ import subprocess
 import time
 import sys
 import random
+import argparse
 from datetime import datetime
+
+parser = argparse.ArgumentParser(description="FaceTime Loop — agentic calling agent")
+parser.add_argument("--number", "-n", action="append", help="Number to call (can be used multiple times)")
+parser.add_argument("--delay", "-d", type=int, help="Seconds between calls")
+parser.add_argument("--max-attempts", "-m", type=int, help="Max attempts per number")
+parser.add_argument("--start-time", "-s", help="Start time HH:MM")
+parser.add_argument("--stop-time", help="Stop time HH:MM")
+parser.add_argument("--round-robin", action="store_true", help="Enable round-robin mode")
+parser.add_argument("--repeat-daily", action="store_true", help="Repeat session daily")
+parser.add_argument("--max-daily", type=int, help="Max total calls per session")
+args = parser.parse_args()
 
 LOG_FILE = "call_log.txt"
 
@@ -25,6 +37,24 @@ MAX_DAILY_CALLS = 50  # hard cap on total calls per session, set to None for unl
 SKIP_AFTER_FAILURES = 3  # skip a number after this many consecutive unanswered calls; None = never skip
 ROUND_ROBIN = False      # if True, rotate through all numbers on each attempt instead of exhausting one at a time
 REPEAT_DAILY = False     # if True, restart the full session each day at START_TIME
+
+# CLI args override config values when provided
+if args.number:
+    NUMBERS = {n: 1 for n in args.number}
+if args.delay:
+    DELAY = args.delay
+if args.max_attempts:
+    MAX_ATTEMPTS = args.max_attempts
+if args.start_time:
+    START_TIME = args.start_time
+if args.stop_time:
+    STOP_TIME = args.stop_time
+if args.round_robin:
+    ROUND_ROBIN = True
+if args.repeat_daily:
+    REPEAT_DAILY = True
+if args.max_daily:
+    MAX_DAILY_CALLS = args.max_daily
 
 def play_sound():
     subprocess.run(["afplay", "/System/Library/Sounds/Ping.aiff"], capture_output=True)
