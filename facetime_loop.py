@@ -5,6 +5,13 @@ from datetime import datetime
 
 LOG_FILE = "call_log.txt"
 
+# Schedule: set to "HH:MM" (24hr) to delay until that time, or None to start immediately
+START_TIME = None  # e.g. "14:30" to start at 2:30 PM
+
+NUMBERS = ["+919324718705"]  # add more numbers to the list
+DELAY = 20  # seconds between calls
+MAX_ATTEMPTS = 10  # set to None for unlimited
+
 def log(message):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     entry = f"[{timestamp}] {message}"
@@ -12,9 +19,21 @@ def log(message):
     with open(LOG_FILE, "a") as f:
         f.write(entry + "\n")
 
-NUMBERS = ["+919324718705"]  # add more numbers to the list
-DELAY = 20  # seconds between calls
-MAX_ATTEMPTS = 10  # set to None for unlimited
+def wait_until(start_time_str):
+    target = datetime.strptime(
+        datetime.now().strftime("%Y-%m-%d") + " " + start_time_str,
+        "%Y-%m-%d %H:%M"
+    )
+    now = datetime.now()
+    if target <= now:
+        log(f"Scheduled time {start_time_str} already passed — starting now.")
+        return
+    wait_secs = (target - now).total_seconds()
+    log(f"Waiting until {start_time_str} ({int(wait_secs)}s from now)...")
+    time.sleep(wait_secs)
+
+if START_TIME:
+    wait_until(START_TIME)
 
 log(f"Session started. Calling {len(NUMBERS)} number(s) on FaceTime.")
 if MAX_ATTEMPTS:
