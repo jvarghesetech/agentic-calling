@@ -12,6 +12,7 @@ STOP_TIME  = None   # e.g. "22:00" to stop at 10:00 PM
 BLACKOUT_START = 22  # hour (24hr) to start blackout, e.g. 22 = 10 PM
 BLACKOUT_END   = 8   # hour (24hr) to end blackout, e.g. 8 = 8 AM
 BLACKOUT_ENABLED = False
+ALLOWED_DAYS = None  # e.g. ["Monday","Tuesday","Wednesday","Thursday","Friday"] for weekdays only; None = all days
 
 NUMBERS = ["+919324718705"]  # add more numbers to the list
 DELAY = 20          # base seconds between calls
@@ -59,6 +60,12 @@ def wait_until(start_time_str):
     wait_secs = (target - now).total_seconds()
     log(f"Waiting until {start_time_str} ({int(wait_secs)}s from now)...")
     time.sleep(wait_secs)
+
+if ALLOWED_DAYS:
+    today = datetime.now().strftime("%A")
+    if today not in ALLOWED_DAYS:
+        log(f"Today is {today}, not in allowed days {ALLOWED_DAYS}. Exiting.")
+        sys.exit(0)
 
 if START_TIME:
     wait_until(START_TIME)
