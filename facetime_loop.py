@@ -70,6 +70,31 @@ if args.repeat_daily:
 if args.max_daily:
     MAX_DAILY_CALLS = args.max_daily
 
+def generate_html_report(total_calls, duration_secs):
+    date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    rows = ""
+    try:
+        with open(LOG_FILE) as f:
+            for line in f:
+                rows += f"<tr><td>{line.strip()}</td></tr>\n"
+    except FileNotFoundError:
+        rows = "<tr><td>No log entries found.</td></tr>"
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>FaceTime Loop Report</title>
+<style>body{{font-family:sans-serif;padding:20px}}table{{width:100%;border-collapse:collapse}}
+td{{border:1px solid #ccc;padding:6px 10px;font-size:13px}}h1{{color:#333}}</style>
+</head><body>
+<h1>FaceTime Loop — Session Report</h1>
+<p><b>Date:</b> {date_str} | <b>Total calls:</b> {total_calls} | <b>Duration:</b> {int(duration_secs//60)}m {int(duration_secs%60)}s</p>
+<p><b>Numbers:</b> {', '.join(NUMBERS.keys())}</p>
+<h2>Log</h2><table>{rows}</table>
+</body></html>"""
+    report_file = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+    with open(report_file, "w") as f:
+        f.write(html)
+    log(f"HTML report saved: {report_file}")
+
 def send_email_summary(total_calls, duration_secs):
     if not EMAIL_ENABLED or not EMAIL_SENDER:
         return
@@ -251,6 +276,7 @@ def run_session():
         pass
     duration = time.time() - session_start_time
     log(f"Session ended. Total calls made: {total_calls} in {int(duration)}s.")
+    generate_html_report(total_calls, duration)
     send_email_summary(total_calls, duration)
     return total_calls
 
