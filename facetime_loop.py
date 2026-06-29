@@ -44,7 +44,9 @@ DELAY_RANDOM      = cfg("delay_random", True)
 MAX_ATTEMPTS      = cfg("max_attempts", 10)
 NUMBER_COOLDOWN   = cfg("number_cooldown", 30)
 MAX_DAILY_CALLS   = cfg("max_daily_calls", 50)
-SKIP_AFTER_FAILURES = cfg("skip_after_failures", 3)
+SKIP_AFTER_FAILURES   = cfg("skip_after_failures", 3)
+RETRY_QUICK_DELAY     = cfg("retry_quick_delay", 5)   # seconds before quick retry on no answer
+RETRY_QUICK_ATTEMPTS  = cfg("retry_quick_attempts", 2) # how many quick retries before normal delay
 ROUND_ROBIN       = cfg("round_robin", False)
 REPEAT_DAILY      = cfg("repeat_daily", False)
 EMAIL_ENABLED     = cfg("email_enabled", False)
@@ -209,13 +211,17 @@ def live_countdown(seconds, label="Next call in"):
         time.sleep(1)
     print()
 
-def run_call(NUMBER, attempt, total_calls):
+def run_call(NUMBER, attempt, total_calls, quick_retry=False):
     play_sound()
     notify("FaceTime Loop", f"Calling {NUMBER} (attempt {attempt})")
     subprocess.run(["open", f"facetime://{NUMBER}"])
-    wait = random.uniform(DELAY, DELAY * 1.5) if DELAY_RANDOM else DELAY
-    log(f"[{NUMBER}] Call {attempt} (total: {total_calls}). Next in {int(wait)}s...")
-    live_countdown(wait)
+    if quick_retry:
+        log(f"[{NUMBER}] Quick retry {attempt} (total: {total_calls}). Retrying in {RETRY_QUICK_DELAY}s...")
+        live_countdown(RETRY_QUICK_DELAY, label="Quick retry in")
+    else:
+        wait = random.uniform(DELAY, DELAY * 1.5) if DELAY_RANDOM else DELAY
+        log(f"[{NUMBER}] Call {attempt} (total: {total_calls}). Next in {int(wait)}s...")
+        live_countdown(wait)
 
 def run_session():
     global session_start_time
@@ -271,7 +277,8 @@ def run_session():
                     attempt += 1
                     total_calls += 1
                     consecutive_failures += 1
-                    run_call(NUMBER, attempt, total_calls)
+                    is_quick = (consecutive_failures <= RETRY_QUICK_ATTEMPTS and consecutive_failures > 1)
+                    run_call(NUMBER, attempt, total_calls, quick_retry=is_quick)
     except StopIteration:
         pass
     duration = time.time() - session_start_time
