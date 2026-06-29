@@ -5,6 +5,7 @@ import random
 import argparse
 import json
 import os
+import signal
 from datetime import datetime
 
 CONFIG_FILE = "config.json"
@@ -137,9 +138,22 @@ sorted_numbers = sorted(NUMBERS.items(), key=lambda x: x[1], reverse=True)
 call_list = [num for num, _ in sorted_numbers]
 
 session_start_time = None
+_paused = False
+
+def toggle_pause(signum, frame):
+    global _paused
+    _paused = not _paused
+    state = "PAUSED (send SIGUSR1 again to resume)" if _paused else "RESUMED"
+    print(f"\n[{datetime.now().strftime('%H:%M:%S')}] {state}")
+
+signal.signal(signal.SIGUSR1, toggle_pause)
+print(f"PID {os.getpid()} — send 'kill -SIGUSR1 {os.getpid()}' to pause/resume")
 
 def live_countdown(seconds, label="Next call in"):
     for remaining in range(int(seconds), 0, -1):
+        while _paused:
+            print(f"\r  [PAUSED] Press kill -SIGUSR1 {os.getpid()} to resume   ", end="", flush=True)
+            time.sleep(1)
         elapsed = int(time.time() - session_start_time) if session_start_time else 0
         print(f"\r  {label}: {remaining:3}s | session elapsed: {elapsed}s   ", end="", flush=True)
         time.sleep(1)
