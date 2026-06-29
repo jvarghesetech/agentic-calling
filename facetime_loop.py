@@ -99,15 +99,26 @@ if ALLOWED_DAYS:
 sorted_numbers = sorted(NUMBERS.items(), key=lambda x: x[1], reverse=True)
 call_list = [num for num, _ in sorted_numbers]
 
+session_start_time = None
+
+def live_countdown(seconds, label="Next call in"):
+    for remaining in range(int(seconds), 0, -1):
+        elapsed = int(time.time() - session_start_time) if session_start_time else 0
+        print(f"\r  {label}: {remaining:3}s | session elapsed: {elapsed}s   ", end="", flush=True)
+        time.sleep(1)
+    print()
+
 def run_call(NUMBER, attempt, total_calls):
     play_sound()
     notify("FaceTime Loop", f"Calling {NUMBER} (attempt {attempt})")
     subprocess.run(["open", f"facetime://{NUMBER}"])
     wait = random.uniform(DELAY, DELAY * 1.5) if DELAY_RANDOM else DELAY
     log(f"[{NUMBER}] Call {attempt} (total: {total_calls}). Next in {int(wait)}s...")
-    time.sleep(wait)
+    live_countdown(wait)
 
 def run_session():
+    global session_start_time
+    session_start_time = time.time()
     total_calls = 0
     log(f"Session started. Calling {len(call_list)} number(s) on FaceTime (by priority).")
     if MAX_ATTEMPTS:
