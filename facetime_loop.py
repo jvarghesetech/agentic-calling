@@ -3,7 +3,18 @@ import time
 import sys
 import random
 import argparse
+import json
+import os
 from datetime import datetime
+
+CONFIG_FILE = "config.json"
+_cfg = {}
+if os.path.exists(CONFIG_FILE):
+    with open(CONFIG_FILE) as f:
+        _cfg = json.load(f)
+
+def cfg(key, default):
+    return _cfg.get(key, default)
 
 parser = argparse.ArgumentParser(description="FaceTime Loop — agentic calling agent")
 parser.add_argument("--number", "-n", action="append", help="Number to call (can be used multiple times)")
@@ -16,27 +27,23 @@ parser.add_argument("--repeat-daily", action="store_true", help="Repeat session 
 parser.add_argument("--max-daily", type=int, help="Max total calls per session")
 args = parser.parse_args()
 
-LOG_FILE = "call_log.txt"
-
-# Schedule: set to "HH:MM" (24hr) to delay until that time, or None to start immediately
-START_TIME = None   # e.g. "14:30" to start at 2:30 PM
-STOP_TIME  = None   # e.g. "22:00" to stop at 10:00 PM
-BLACKOUT_START = 22  # hour (24hr) to start blackout, e.g. 22 = 10 PM
-BLACKOUT_END   = 8   # hour (24hr) to end blackout, e.g. 8 = 8 AM
-BLACKOUT_ENABLED = False
-ALLOWED_DAYS = None  # e.g. ["Monday","Tuesday","Wednesday","Thursday","Friday"] for weekdays only; None = all days
-
-# Numbers with priority — higher number = called first. Same priority = original order.
-NUMBERS = {"+919324718705": 1}  # format: {"number": priority}
-NUMBERS_FILE = None  # e.g. "numbers.txt" — one number per line, optional ":priority" suffix
-DELAY = 20          # base seconds between calls
-DELAY_RANDOM = True # if True, randomizes delay between DELAY and DELAY*1.5
-MAX_ATTEMPTS = 10   # set to None for unlimited
-NUMBER_COOLDOWN = 30  # seconds to wait before moving to next number
-MAX_DAILY_CALLS = 50  # hard cap on total calls per session, set to None for unlimited
-SKIP_AFTER_FAILURES = 3  # skip a number after this many consecutive unanswered calls; None = never skip
-ROUND_ROBIN = False      # if True, rotate through all numbers on each attempt instead of exhausting one at a time
-REPEAT_DAILY = False     # if True, restart the full session each day at START_TIME
+LOG_FILE          = cfg("log_file", "call_log.txt")
+START_TIME        = cfg("start_time", None)
+STOP_TIME         = cfg("stop_time", None)
+BLACKOUT_START    = cfg("blackout_start", 22)
+BLACKOUT_END      = cfg("blackout_end", 8)
+BLACKOUT_ENABLED  = cfg("blackout_enabled", False)
+ALLOWED_DAYS      = cfg("allowed_days", None)
+NUMBERS           = cfg("numbers", {"+919324718705": 1})
+NUMBERS_FILE      = cfg("numbers_file", None)
+DELAY             = cfg("delay", 20)
+DELAY_RANDOM      = cfg("delay_random", True)
+MAX_ATTEMPTS      = cfg("max_attempts", 10)
+NUMBER_COOLDOWN   = cfg("number_cooldown", 30)
+MAX_DAILY_CALLS   = cfg("max_daily_calls", 50)
+SKIP_AFTER_FAILURES = cfg("skip_after_failures", 3)
+ROUND_ROBIN       = cfg("round_robin", False)
+REPEAT_DAILY      = cfg("repeat_daily", False)
 
 # CLI args override config values when provided
 if args.number:

@@ -1,0 +1,19 @@
+{
+  "numbers": {"+919324718705": 1},
+  "delay": 20,
+  "delay_random": true,
+  "max_attempts": 10,
+  "number_cooldown": 30,
+  "max_daily_calls": 50,
+  "skip_after_failures": 3,
+  "round_robin": false,
+  "repeat_daily": false,
+  "start_time": null,
+  "stop_time": null,
+  "blackout_enabled": false,
+  "blackout_start": 22,
+  "blackout_end": 8,
+  "allowed_days": null,
+  "numbers_file": null,
+  "log_file": "call_log.txt"
+}
