@@ -14,7 +14,8 @@ BLACKOUT_END   = 8   # hour (24hr) to end blackout, e.g. 8 = 8 AM
 BLACKOUT_ENABLED = False
 ALLOWED_DAYS = None  # e.g. ["Monday","Tuesday","Wednesday","Thursday","Friday"] for weekdays only; None = all days
 
-NUMBERS = ["+919324718705"]  # add more numbers to the list
+# Numbers with priority — higher number = called first. Same priority = original order.
+NUMBERS = {"+919324718705": 1}  # format: {"number": priority}
 DELAY = 20          # base seconds between calls
 DELAY_RANDOM = True # if True, randomizes delay between DELAY and DELAY*1.5
 MAX_ATTEMPTS = 10   # set to None for unlimited
@@ -79,7 +80,10 @@ if ALLOWED_DAYS:
 if START_TIME:
     wait_until(START_TIME)
 
-log(f"Session started. Calling {len(NUMBERS)} number(s) on FaceTime.")
+sorted_numbers = sorted(NUMBERS.items(), key=lambda x: x[1], reverse=True)
+call_list = [num for num, _ in sorted_numbers]
+
+log(f"Session started. Calling {len(call_list)} number(s) on FaceTime (by priority).")
 if MAX_ATTEMPTS:
     log(f"Will stop after {MAX_ATTEMPTS} attempts per number.")
 if MAX_DAILY_CALLS:
@@ -88,7 +92,7 @@ if MAX_DAILY_CALLS:
 total_calls = 0
 
 try:
-    for i, NUMBER in enumerate(NUMBERS):
+    for i, NUMBER in enumerate(call_list):
         if MAX_DAILY_CALLS and total_calls >= MAX_DAILY_CALLS:
             log(f"Daily cap of {MAX_DAILY_CALLS} calls reached. Stopping.")
             break
@@ -96,7 +100,7 @@ try:
             log(f"Cooldown: waiting {NUMBER_COOLDOWN}s before next number...")
             time.sleep(NUMBER_COOLDOWN)
         attempt = 0
-        log(f"Starting calls to {NUMBER}")
+        log(f"Starting calls to {NUMBER} (priority {NUMBERS[NUMBER]})")
         while True:
             if MAX_ATTEMPTS and attempt >= MAX_ATTEMPTS:
                 log(f"Reached {MAX_ATTEMPTS} attempts for {NUMBER}. Moving on.")
