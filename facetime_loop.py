@@ -223,10 +223,21 @@ def run_call(NUMBER, attempt, total_calls, quick_retry=False):
         log(f"[{NUMBER}] Call {attempt} (total: {total_calls}). Next in {int(wait)}s...")
         live_countdown(wait)
 
+def print_stats(stats, duration):
+    print("\n" + "="*50)
+    print("  SESSION STATISTICS")
+    print("="*50)
+    print(f"  Duration      : {int(duration//60)}m {int(duration%60)}s")
+    print(f"  Total calls   : {stats['total']}")
+    for num, count in stats["per_number"].items():
+        print(f"  {num:20s}: {count} call(s)")
+    print("="*50 + "\n")
+
 def run_session():
     global session_start_time
     session_start_time = time.time()
     total_calls = 0
+    stats = {"total": 0, "per_number": {n: 0 for n in call_list}}
     log(f"Session started. Calling {len(call_list)} number(s) on FaceTime (by priority).")
     if MAX_ATTEMPTS:
         log(f"Will stop after {MAX_ATTEMPTS} attempts per number.")
@@ -245,6 +256,8 @@ def run_session():
                     wait_through_blackout()
                     round_attempt[NUMBER] += 1
                     total_calls += 1
+                    stats["total"] += 1
+                    stats["per_number"][NUMBER] = stats["per_number"].get(NUMBER, 0) + 1
                     run_call(NUMBER, round_attempt[NUMBER], total_calls)
                     if MAX_ATTEMPTS and round_attempt[NUMBER] >= MAX_ATTEMPTS:
                         log(f"Max attempts reached for {NUMBER}. Removing from rotation.")
@@ -277,12 +290,15 @@ def run_session():
                     attempt += 1
                     total_calls += 1
                     consecutive_failures += 1
+                    stats["total"] += 1
+                    stats["per_number"][NUMBER] = stats["per_number"].get(NUMBER, 0) + 1
                     is_quick = (consecutive_failures <= RETRY_QUICK_ATTEMPTS and consecutive_failures > 1)
                     run_call(NUMBER, attempt, total_calls, quick_retry=is_quick)
     except StopIteration:
         pass
     duration = time.time() - session_start_time
     log(f"Session ended. Total calls made: {total_calls} in {int(duration)}s.")
+    print_stats(stats, duration)
     generate_html_report(total_calls, duration)
     send_email_summary(total_calls, duration)
     return total_calls
