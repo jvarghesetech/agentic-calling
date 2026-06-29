@@ -7,7 +7,8 @@ from datetime import datetime
 LOG_FILE = "call_log.txt"
 
 # Schedule: set to "HH:MM" (24hr) to delay until that time, or None to start immediately
-START_TIME = None  # e.g. "14:30" to start at 2:30 PM
+START_TIME = None   # e.g. "14:30" to start at 2:30 PM
+STOP_TIME  = None   # e.g. "22:00" to stop at 10:00 PM
 
 NUMBERS = ["+919324718705"]  # add more numbers to the list
 DELAY = 20          # base seconds between calls
@@ -22,6 +23,13 @@ def log(message):
     print(entry)
     with open(LOG_FILE, "a") as f:
         f.write(entry + "\n")
+
+def past_stop_time():
+    if not STOP_TIME:
+        return False
+    now = datetime.now()
+    stop = datetime.strptime(datetime.now().strftime("%Y-%m-%d") + " " + STOP_TIME, "%Y-%m-%d %H:%M")
+    return now >= stop
 
 def wait_until(start_time_str):
     target = datetime.strptime(
@@ -63,6 +71,9 @@ try:
                 break
             if MAX_DAILY_CALLS and total_calls >= MAX_DAILY_CALLS:
                 log(f"Daily cap of {MAX_DAILY_CALLS} calls reached. Stopping.")
+                raise StopIteration
+            if past_stop_time():
+                log(f"Stop time {STOP_TIME} reached. Stopping.")
                 raise StopIteration
             attempt += 1
             total_calls += 1
