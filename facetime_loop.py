@@ -24,6 +24,7 @@ NUMBER_COOLDOWN = 30  # seconds to wait before moving to next number
 MAX_DAILY_CALLS = 50  # hard cap on total calls per session, set to None for unlimited
 SKIP_AFTER_FAILURES = 3  # skip a number after this many consecutive unanswered calls; None = never skip
 ROUND_ROBIN = False      # if True, rotate through all numbers on each attempt instead of exhausting one at a time
+REPEAT_DAILY = False     # if True, restart the full session each day at START_TIME
 
 def play_sound():
     subprocess.run(["afplay", "/System/Library/Sounds/Ping.aiff"], capture_output=True)
@@ -95,19 +96,8 @@ if ALLOWED_DAYS:
         log(f"Today is {today}, not in allowed days {ALLOWED_DAYS}. Exiting.")
         sys.exit(0)
 
-if START_TIME:
-    wait_until(START_TIME)
-
 sorted_numbers = sorted(NUMBERS.items(), key=lambda x: x[1], reverse=True)
 call_list = [num for num, _ in sorted_numbers]
-
-log(f"Session started. Calling {len(call_list)} number(s) on FaceTime (by priority).")
-if MAX_ATTEMPTS:
-    log(f"Will stop after {MAX_ATTEMPTS} attempts per number.")
-if MAX_DAILY_CALLS:
-    log(f"Daily cap: {MAX_DAILY_CALLS} total calls.")
-
-total_calls = 0
 
 def run_call(NUMBER, attempt, total_calls):
     play_sound()
@@ -117,53 +107,72 @@ def run_call(NUMBER, attempt, total_calls):
     log(f"[{NUMBER}] Call {attempt} (total: {total_calls}). Next in {int(wait)}s...")
     time.sleep(wait)
 
-try:
-    if ROUND_ROBIN:
-        round_attempt = {n: 0 for n in call_list}
-        active = list(call_list)
-        while active:
-            for NUMBER in list(active):
-                if MAX_DAILY_CALLS and total_calls >= MAX_DAILY_CALLS:
-                    log(f"Daily cap reached. Stopping."); raise StopIteration
-                if past_stop_time():
-                    log(f"Stop time reached. Stopping."); raise StopIteration
-                wait_through_blackout()
-                round_attempt[NUMBER] += 1
-                total_calls += 1
-                run_call(NUMBER, round_attempt[NUMBER], total_calls)
-                if MAX_ATTEMPTS and round_attempt[NUMBER] >= MAX_ATTEMPTS:
-                    log(f"Max attempts reached for {NUMBER}. Removing from rotation.")
-                    active.remove(NUMBER)
-    else:
-        for i, NUMBER in enumerate(call_list):
-            if MAX_DAILY_CALLS and total_calls >= MAX_DAILY_CALLS:
-                log(f"Daily cap of {MAX_DAILY_CALLS} calls reached. Stopping.")
-                break
-            if i > 0 and NUMBER_COOLDOWN:
-                log(f"Cooldown: waiting {NUMBER_COOLDOWN}s before next number...")
-                time.sleep(NUMBER_COOLDOWN)
-            attempt = 0
-            consecutive_failures = 0
-            log(f"Starting calls to {NUMBER} (priority {NUMBERS[NUMBER]})")
-            while True:
-                if MAX_ATTEMPTS and attempt >= MAX_ATTEMPTS:
-                    log(f"Reached {MAX_ATTEMPTS} attempts for {NUMBER}. Moving on.")
-                    break
-                if SKIP_AFTER_FAILURES and consecutive_failures >= SKIP_AFTER_FAILURES:
-                    log(f"Skipping {NUMBER} after {consecutive_failures} consecutive unanswered calls.")
-                    break
+def run_session():
+    total_calls = 0
+    log(f"Session started. Calling {len(call_list)} number(s) on FaceTime (by priority).")
+    if MAX_ATTEMPTS:
+        log(f"Will stop after {MAX_ATTEMPTS} attempts per number.")
+    if MAX_DAILY_CALLS:
+        log(f"Daily cap: {MAX_DAILY_CALLS} total calls.")
+    try:
+        if ROUND_ROBIN:
+            round_attempt = {n: 0 for n in call_list}
+            active = list(call_list)
+            while active:
+                for NUMBER in list(active):
+                    if MAX_DAILY_CALLS and total_calls >= MAX_DAILY_CALLS:
+                        log(f"Daily cap reached. Stopping."); raise StopIteration
+                    if past_stop_time():
+                        log(f"Stop time reached. Stopping."); raise StopIteration
+                    wait_through_blackout()
+                    round_attempt[NUMBER] += 1
+                    total_calls += 1
+                    run_call(NUMBER, round_attempt[NUMBER], total_calls)
+                    if MAX_ATTEMPTS and round_attempt[NUMBER] >= MAX_ATTEMPTS:
+                        log(f"Max attempts reached for {NUMBER}. Removing from rotation.")
+                        active.remove(NUMBER)
+        else:
+            for i, NUMBER in enumerate(call_list):
                 if MAX_DAILY_CALLS and total_calls >= MAX_DAILY_CALLS:
                     log(f"Daily cap of {MAX_DAILY_CALLS} calls reached. Stopping.")
-                    raise StopIteration
-                if past_stop_time():
-                    log(f"Stop time {STOP_TIME} reached. Stopping.")
-                    raise StopIteration
-                wait_through_blackout()
-                attempt += 1
-                total_calls += 1
-                consecutive_failures += 1
-                run_call(NUMBER, attempt, total_calls)
-except StopIteration:
-    pass
+                    break
+                if i > 0 and NUMBER_COOLDOWN:
+                    log(f"Cooldown: waiting {NUMBER_COOLDOWN}s before next number...")
+                    time.sleep(NUMBER_COOLDOWN)
+                attempt = 0
+                consecutive_failures = 0
+                log(f"Starting calls to {NUMBER} (priority {NUMBERS[NUMBER]})")
+                while True:
+                    if MAX_ATTEMPTS and attempt >= MAX_ATTEMPTS:
+                        log(f"Reached {MAX_ATTEMPTS} attempts for {NUMBER}. Moving on.")
+                        break
+                    if SKIP_AFTER_FAILURES and consecutive_failures >= SKIP_AFTER_FAILURES:
+                        log(f"Skipping {NUMBER} after {consecutive_failures} consecutive unanswered calls.")
+                        break
+                    if MAX_DAILY_CALLS and total_calls >= MAX_DAILY_CALLS:
+                        log(f"Daily cap of {MAX_DAILY_CALLS} calls reached. Stopping.")
+                        raise StopIteration
+                    if past_stop_time():
+                        log(f"Stop time {STOP_TIME} reached. Stopping.")
+                        raise StopIteration
+                    wait_through_blackout()
+                    attempt += 1
+                    total_calls += 1
+                    consecutive_failures += 1
+                    run_call(NUMBER, attempt, total_calls)
+    except StopIteration:
+        pass
+    log(f"Session ended. Total calls made: {total_calls}")
+    return total_calls
+
+try:
+    while True:
+        if START_TIME:
+            wait_until(START_TIME)
+        run_session()
+        if not REPEAT_DAILY:
+            break
+        log("Waiting 24 hours before next session...")
+        time.sleep(86400)
 except KeyboardInterrupt:
-    log(f"Session stopped by user after {total_calls} total call(s).")
+    log("Stopped by user.")
