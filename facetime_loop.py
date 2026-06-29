@@ -21,6 +21,12 @@ MAX_ATTEMPTS = 10   # set to None for unlimited
 NUMBER_COOLDOWN = 30  # seconds to wait before moving to next number
 MAX_DAILY_CALLS = 50  # hard cap on total calls per session, set to None for unlimited
 
+def notify(title, message):
+    subprocess.run([
+        "osascript", "-e",
+        f'display notification "{message}" with title "{title}"'
+    ], capture_output=True)
+
 def log(message):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     entry = f"[{timestamp}] {message}"
@@ -101,6 +107,7 @@ try:
             wait_through_blackout()
             attempt += 1
             total_calls += 1
+            notify("FaceTime Loop", f"Calling {NUMBER} (attempt {attempt})")
             subprocess.run(["open", f"facetime://{NUMBER}"])
             wait = random.uniform(DELAY, DELAY * 1.5) if DELAY_RANDOM else DELAY
             log(f"[{NUMBER}] Call {attempt} initiated (total: {total_calls}). Next call in {int(wait)}s...")
