@@ -14,6 +14,7 @@ DELAY = 20          # base seconds between calls
 DELAY_RANDOM = True # if True, randomizes delay between DELAY and DELAY*1.5
 MAX_ATTEMPTS = 10   # set to None for unlimited
 NUMBER_COOLDOWN = 30  # seconds to wait before moving to next number
+MAX_DAILY_CALLS = 50  # hard cap on total calls per session, set to None for unlimited
 
 def log(message):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -41,9 +42,16 @@ if START_TIME:
 log(f"Session started. Calling {len(NUMBERS)} number(s) on FaceTime.")
 if MAX_ATTEMPTS:
     log(f"Will stop after {MAX_ATTEMPTS} attempts per number.")
+if MAX_DAILY_CALLS:
+    log(f"Daily cap: {MAX_DAILY_CALLS} total calls.")
+
+total_calls = 0
 
 try:
     for i, NUMBER in enumerate(NUMBERS):
+        if MAX_DAILY_CALLS and total_calls >= MAX_DAILY_CALLS:
+            log(f"Daily cap of {MAX_DAILY_CALLS} calls reached. Stopping.")
+            break
         if i > 0 and NUMBER_COOLDOWN:
             log(f"Cooldown: waiting {NUMBER_COOLDOWN}s before next number...")
             time.sleep(NUMBER_COOLDOWN)
@@ -53,10 +61,16 @@ try:
             if MAX_ATTEMPTS and attempt >= MAX_ATTEMPTS:
                 log(f"Reached {MAX_ATTEMPTS} attempts for {NUMBER}. Moving on.")
                 break
+            if MAX_DAILY_CALLS and total_calls >= MAX_DAILY_CALLS:
+                log(f"Daily cap of {MAX_DAILY_CALLS} calls reached. Stopping.")
+                raise StopIteration
             attempt += 1
+            total_calls += 1
             subprocess.run(["open", f"facetime://{NUMBER}"])
             wait = random.uniform(DELAY, DELAY * 1.5) if DELAY_RANDOM else DELAY
-            log(f"[{NUMBER}] Call {attempt} initiated. Next call in {int(wait)} seconds...")
+            log(f"[{NUMBER}] Call {attempt} initiated (total: {total_calls}). Next call in {int(wait)}s...")
             time.sleep(wait)
+except StopIteration:
+    pass
 except KeyboardInterrupt:
-    log("Session stopped by user.")
+    log(f"Session stopped by user after {total_calls} total call(s).")
