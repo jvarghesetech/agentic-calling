@@ -21,6 +21,9 @@ MAX_ATTEMPTS = 10   # set to None for unlimited
 NUMBER_COOLDOWN = 30  # seconds to wait before moving to next number
 MAX_DAILY_CALLS = 50  # hard cap on total calls per session, set to None for unlimited
 
+def play_sound():
+    subprocess.run(["afplay", "/System/Library/Sounds/Ping.aiff"], capture_output=True)
+
 def notify(title, message):
     subprocess.run([
         "osascript", "-e",
@@ -107,6 +110,7 @@ try:
             wait_through_blackout()
             attempt += 1
             total_calls += 1
+            play_sound()
             notify("FaceTime Loop", f"Calling {NUMBER} (attempt {attempt})")
             subprocess.run(["open", f"facetime://{NUMBER}"])
             wait = random.uniform(DELAY, DELAY * 1.5) if DELAY_RANDOM else DELAY
