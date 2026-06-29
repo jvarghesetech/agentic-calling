@@ -6,6 +6,8 @@ import argparse
 import json
 import os
 import signal
+import smtplib
+from email.mime.text import MIMEText
 from datetime import datetime
 
 CONFIG_FILE = "config.json"
@@ -45,6 +47,10 @@ MAX_DAILY_CALLS   = cfg("max_daily_calls", 50)
 SKIP_AFTER_FAILURES = cfg("skip_after_failures", 3)
 ROUND_ROBIN       = cfg("round_robin", False)
 REPEAT_DAILY      = cfg("repeat_daily", False)
+EMAIL_ENABLED     = cfg("email_enabled", False)
+EMAIL_SENDER      = cfg("email_sender", "")       # your Gmail address
+EMAIL_PASSWORD    = cfg("email_password", "")     # Gmail app password
+EMAIL_RECIPIENT   = cfg("email_recipient", "")    # where to send the summary
 
 # CLI args override config values when provided
 if args.number:
@@ -63,6 +69,25 @@ if args.repeat_daily:
     REPEAT_DAILY = True
 if args.max_daily:
     MAX_DAILY_CALLS = args.max_daily
+
+def send_email_summary(total_calls, duration_secs):
+    if not EMAIL_ENABLED or not EMAIL_SENDER:
+        return
+    try:
+        body = (f"FaceTime Loop session complete.\n\n"
+                f"Total calls made: {total_calls}\n"
+                f"Duration: {int(duration_secs // 60)}m {int(duration_secs % 60)}s\n"
+                f"Numbers called: {', '.join(NUMBERS.keys())}\n")
+        msg = MIMEText(body)
+        msg["Subject"] = f"FaceTime Loop — {total_calls} calls made"
+        msg["From"] = EMAIL_SENDER
+        msg["To"] = EMAIL_RECIPIENT
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.send_message(msg)
+        log(f"Email summary sent to {EMAIL_RECIPIENT}.")
+    except Exception as e:
+        log(f"Email failed: {e}")
 
 def play_sound():
     subprocess.run(["afplay", "/System/Library/Sounds/Ping.aiff"], capture_output=True)
@@ -224,7 +249,9 @@ def run_session():
                     run_call(NUMBER, attempt, total_calls)
     except StopIteration:
         pass
-    log(f"Session ended. Total calls made: {total_calls}")
+    duration = time.time() - session_start_time
+    log(f"Session ended. Total calls made: {total_calls} in {int(duration)}s.")
+    send_email_summary(total_calls, duration)
     return total_calls
 
 try:
