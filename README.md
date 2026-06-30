@@ -83,7 +83,7 @@ All settings can be set in `config.json` (recommended) or directly in `facetime_
 ## Numbers file format
 
 ```
-+919324718705
++157438975432
 +14155552671:2
 +14155552672:1
 ```
